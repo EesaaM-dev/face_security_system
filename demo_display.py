@@ -2,7 +2,8 @@ import numpy as np
 import cv2 as cv
 import time
 import os
-import pickle
+import sqlite3
+
 #load pretrained haar cascade classifier
 def lbph_recognition(app):
 
@@ -14,12 +15,21 @@ def lbph_recognition(app):
 
     #start video capture from webcam
     video= cv.VideoCapture(0)
+    try:
+        conn = sqlite3.connect("users.db")
+        c = conn.cursor()
+        c.execute("SELECT id, user_id FROM users")
+        # This creates the map: {1: 'Steve', 2: 'Mark'}
+        label_dict = {row[0]: row[1] for row in c.fetchall()}
+        conn.close()
+        print("loaded users from database")
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        label_dict = {}
 
-    with open("label_dict.pkl", "rb") as file:
-        #read label dict to map predicted labels back to user ids
-        label_dict = pickle.load(file)
-        file.close()
-    print(label_dict)
+    video = cv.VideoCapture(0)
+    app.running = True
+
     app.running = True
     while app.running:
         #capture each frame from webcam

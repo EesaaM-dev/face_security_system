@@ -29,9 +29,9 @@ def arc_recognition(app):
         return face_input
 
     #load from database it has embeddings for each user_id
-    conn = sqlite3.connect("embeddings_db.db")
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
-    c.execute("SELECT user_id, embedding FROM embeddings_db")
+    c.execute("SELECT user_id, embedding FROM users")
     rows = c.fetchall()
     embeddings_db = {}
     for user_id, avg_emb in rows:

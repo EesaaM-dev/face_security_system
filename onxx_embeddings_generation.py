@@ -6,18 +6,13 @@ import sqlite3
 
 def generate_embeddings():
     
-    #create/connect to sql database
-    conn = sqlite3.connect("embeddings_db.db")
+    #connect to the existing database else return error
+    if not os.path.exists("users.db"):
+        print("Error: users.db not found")
+        return
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
-    
     #create table if it doesn't exist
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS embeddings_db (
-            user_id TEXT PRIMARY KEY,
-            embedding BLOB NOT NULL
-        )
-    ''')
-    conn.commit()
     
     #load onnx model
     sess = ort.InferenceSession("w600k_r50.onnx")
@@ -78,18 +73,21 @@ def generate_embeddings():
         if user_embeddings:
             avg_emb = np.mean(user_embeddings, axis=0)
             avg_emb = avg_emb / np.linalg.norm(avg_emb)
-            
-            #insert into database
-            c.execute('''
-                INSERT OR REPLACE INTO embeddings_db (user_id, embedding)
-                VALUES (?, ?)
-            ''', (user, avg_emb.tobytes()))
+
+            #check if user_id is already in database
+            c.execute("SELECT user_id FROM users WHERE user_id=?", (user,))
+            exists = c.fetchone()
+            if exists:
+                c.execute("UPDATE users SET embedding=? WHERE user_id=?", (avg_emb.tobytes(), user))
+            else:
+                c.execute("INSERT INTO users (user_id, embedding) VALUES (?, ?)", (user, avg_emb.tobytes()))
+    
             conn.commit()
             
             print(f"Saved average embedding for {user}, {len(user_embeddings)} images")
     
     conn.close()
-    print("Database saved as embeddings_db")
+    print("Database saved as users")
 
 if __name__ == "__main__":
     generate_embeddings()

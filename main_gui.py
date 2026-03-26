@@ -9,7 +9,11 @@ from demo_display import lbph_recognition
 from onxx_embeddings_generation import generate_embeddings
 from LBPH_train import lbph_train
 from recognise_arcface import arc_recognition
+from init_db import init_db
 
+#initialise database on first run
+if not os.path.exists("users.db"):
+    init_db()
 class Face_recognition:
 
     def __init__(self, root):
@@ -31,10 +35,10 @@ class Face_recognition:
         tk.Button(self.root, text="LBPH recognition", width=25, command=self.lbph_recognition).pack(pady=5)
         tk.Button(self.root, text="ArcFace recognition", width=25, command=self.arc_recognition).pack(pady=5)
         tk.Button(self.root, text="Exit", width=25, command=self.exit_program).pack(pady=5)
-
         #status label
-        
+
         # self.status_label = tk.Label(self.root, text="Status: Ready", font=("Arial", 10))
+        
         # self.status_label.pack(side=tk.BOTTOM, pady=10)
 
     #functions for buttons (new threads to prevent GUI freezing)

@@ -2,7 +2,9 @@ import numpy as np
 import cv2 as cv
 import time
 import os
+import sqlite3
 #load pretrained haar cascade classifier
+
 
 def enrol_user(user_id, img_no = 150):
         
@@ -62,6 +64,18 @@ def enrol_user(user_id, img_no = 150):
     #release webcam and close opencv windows
     video.release()
     cv.destroyAllWindows()
+
+    if ct > 0:
+        try:
+            conn = sqlite3.connect("users.db")
+            c = conn.cursor()
+            #insert new user into database with empty embedding and
+            c.execute("INSERT INTO users (user_id, embedding) VALUES (?, ?)", (str(id), b'')) #insert empty embedding for now, will update after generating embeddings
+            conn.commit()
+            conn.close()
+        except sqlite3.Error:
+            print("Database error: ")
+
 
 if __name__ == "__main__":
     user_id = input("Enter user ID: ")
