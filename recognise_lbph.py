@@ -13,8 +13,6 @@ def lbph_recognition(app):
     recogniser = cv.face.LBPHFaceRecognizer.create()
     recogniser.read("recogniser.yml")
 
-    #start video capture from webcam
-    video= cv.VideoCapture(0)
     try:
         conn = sqlite3.connect("users.db")
         c = conn.cursor()
@@ -26,10 +24,8 @@ def lbph_recognition(app):
     except sqlite3.Error as e:
         print(f"Database error: {e}")
         label_dict = {}
-
+    #start video capture and recognition loop
     video = cv.VideoCapture(0)
-    app.running = True
-
     app.running = True
     while app.running:
         #capture each frame from webcam
@@ -46,23 +42,26 @@ def lbph_recognition(app):
 
         #draw rectangle around detected faces 
         for (x, y, w, h) in faces:
-            cv.rectangle(frame, (x, y), (x + w, y + h), (0,0,255), 2) #display rectangle around detected face
+            #cv.rectangle(frame, (x, y), (x + w, y + h), (0,0,255), 2) #display rectangle around detected face
             label, confidence = recogniser.predict(gray[y:y+h, x: x+w])
             #similarity = max(0, 100 - confidence) / 100  # Convert confidence to similarity score (0 to 1)
-            if confidence < 60:
-                name = label_dict[label]
-                #change bounding box color to green if confidence is above threshold
-                cv.rectangle(frame, (x, y), (x + w, y + h), (0,255,0), 2)
-                #change text color to green if confidence is above threshold
+            if confidence < 70:
+                result = "access_granted"
+                name = label_dict.get(label, "unknown") #get name from dict, default to unknown if not found
+                colour = (0,255,0) #green for known
             else:
                 name = "unknown"
+                result = "access_denied"
+                colour = (0,0,255) #red for unknown 
             
 
             text=f"{name} ({confidence:.2f})"
-            if confidence < 60:
-                cv.putText(frame, text, (x,y-40), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-            else:
-                cv.putText(frame, text, (x,y-40), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+            
+            cv.rectangle(frame, (x,y),(x+w,y+h),colour,2) #rectangle color based on recognition result
+           
+            cv.putText(frame, text, (x,y-10), cv.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
+       
+            cv.putText(frame, result, (x,y+h+25), cv.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
         #display resulting frame with detected faces
         cv.imshow('Face ', frame)
         #exit loop when user presses q

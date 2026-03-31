@@ -5,7 +5,7 @@ import threading
 import cv2
 from PIL import Image, ImageTk
 from data_collection import enrol_user
-from demo_display import lbph_recognition
+from recognise_lbph import lbph_recognition
 from onxx_embeddings_generation import generate_embeddings
 from LBPH_train import lbph_train
 from recognise_arcface import arc_recognition
@@ -93,7 +93,12 @@ class Face_recognition:
 if __name__ == "__main__":
     root = tk.Tk()
     app = Face_recognition(root)
-    root.mainloop()
+    print("GUI started")
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        print("Program interrupted by user")
+        root.destroy()
 
 
 
