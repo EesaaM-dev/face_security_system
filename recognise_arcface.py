@@ -3,11 +3,15 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 import sqlite3
-
-
+from logger import log_attempt
+import time
 
 def arc_recognition(app):
-        
+    last_user = "unknown"
+    log_cooldown = 2 #cooldown to prevent spamming logs
+
+    logged_dict = {} #dict to handle logs for multiple users at once
+
     #loading onnx model 
     sess = ort.InferenceSession("w600k_r50.onnx")
     input_name = sess.get_inputs()[0].name
@@ -37,7 +41,8 @@ def arc_recognition(app):
     for user_id, avg_emb in rows:
         embeddings_db[user_id] = np.frombuffer(avg_emb, dtype=np.float32)
     conn.close()
-    #load average embeddings for each user from sql database
+
+    #connect to access logs database.
   
 
     #real time recognition 
@@ -75,18 +80,27 @@ def arc_recognition(app):
                     best_user = user
             if best_score < similarity_threshold:
                 best_user = "unknown"
+                result = "access_denied"
                 cv2.rectangle(frame, (x,y), (x+w, y+h), (0,0,255), 2) #red if below threshold
                 cv2.putText(frame, f"{best_user} ({best_score:.2f})", (x, y-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
             else:
+                result = "access_granted"
                 cv2.rectangle(frame, (x,y), (x+w, y+h), (0,255,0), 2) #green if above threshold
                 #green text if above threshold
                 cv2.putText(frame, f"{best_user} ({best_score:.2f})", (x, y-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
                 
             
-            
+            current_time = time.time()
+            last_entry = logged_dict.get(best_user, 0)
 
+            if best_user != last_user or current_time - last_entry > log_cooldown:
+                #convert best_score to real data type for database
+                best_score_db = float(best_score)
+                log_attempt(best_user, result, best_score_db, "arcface") #log the attempt to database
+                logged_dict[best_user] = current_time
+                last_user = best_user
         cv2.imshow("Arcface Face Recognition", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

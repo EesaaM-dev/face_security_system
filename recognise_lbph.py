@@ -3,10 +3,14 @@ import cv2 as cv
 import time
 import os
 import sqlite3
-
+from logger import log_attempt
 #load pretrained haar cascade classifier
-def lbph_recognition(app):
 
+
+def lbph_recognition(app):
+    last_user= "unknown"
+    log_cooldown = 2 #cooldown to prevent spamming logs
+    logged_dict = {} #dict to handle logs for multiple users at once
 
     face_detect = cv.CascadeClassifier(cv.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
@@ -40,11 +44,12 @@ def lbph_recognition(app):
         # Detect faces in the image
         faces = face_detect.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
+
         #draw rectangle around detected faces 
         for (x, y, w, h) in faces:
             #cv.rectangle(frame, (x, y), (x + w, y + h), (0,0,255), 2) #display rectangle around detected face
             label, confidence = recogniser.predict(gray[y:y+h, x: x+w])
-            #similarity = max(0, 100 - confidence) / 100  # Convert confidence to similarity score (0 to 1)
+        
             if confidence < 70:
                 result = "access_granted"
                 name = label_dict.get(label, "unknown") #get name from dict, default to unknown if not found
@@ -54,7 +59,16 @@ def lbph_recognition(app):
                 result = "access_denied"
                 colour = (0,0,255) #red for unknown 
             
+           
+ 
+            current_time = time.time()
+            last_entry = logged_dict.get(name, 0)
 
+            if name != last_user or current_time - last_entry > log_cooldown:
+                log_attempt(name, result, confidence, "LBPH") #log the attempt to database
+                logged_dict[name] = current_time
+                last_user = name
+            
             text=f"{name} ({confidence:.2f})"
             
             cv.rectangle(frame, (x,y),(x+w,y+h),colour,2) #rectangle color based on recognition result
@@ -65,6 +79,7 @@ def lbph_recognition(app):
         #display resulting frame with detected faces
         cv.imshow('Face ', frame)
         #exit loop when user presses q
+       
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
 

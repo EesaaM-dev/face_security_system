@@ -12,7 +12,7 @@ from recognise_arcface import arc_recognition
 from init_db import init_db
 
 #initialise database on first run
-if not os.path.exists("users.db"):
+if not os.path.exists("users.db") or not os.path.exists("access_logs.db"):
     init_db()
 class Face_recognition:
 
@@ -93,6 +93,8 @@ class Face_recognition:
 if __name__ == "__main__":
     root = tk.Tk()
     app = Face_recognition(root)
+    #initialise database on first run
+
     print("GUI started")
     try:
         root.mainloop()

@@ -18,5 +18,22 @@ def init_db():
     conn.close()
     print("Database initialized as users.db")
 
+    #create logs database for logging access attempts
+    conn = sqlite3.connect("logs.db")
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS access_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            time text,
+            result TEXT,
+            score REAL,
+            method TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database initialized as logs.db")
+
 if __name__ == "__main__":
     init_db()
