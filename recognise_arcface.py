@@ -4,12 +4,14 @@ import numpy as np
 import onnxruntime as ort
 import sqlite3
 from logger import log_attempt
+import numpy as np
+from user_management_module import get_account_status
 import time
 
 def arc_recognition(app):
     last_user = "unknown"
     log_cooldown = 2 #cooldown to prevent spamming logs
-
+    fps_list = []
     logged_dict = {} #dict to handle logs for multiple users at once
 
     #loading onnx model 
@@ -31,7 +33,6 @@ def arc_recognition(app):
         face_input = np.transpose(face_norm, (2,0,1))
         face_input = np.expand_dims(face_input, axis=0).astype(np.float32)
         return face_input
-
     #load from database it has embeddings for each user_id
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
@@ -41,10 +42,7 @@ def arc_recognition(app):
     for user_id, avg_emb in rows:
         embeddings_db[user_id] = np.frombuffer(avg_emb, dtype=np.float32)
     conn.close()
-
     #connect to access logs database.
-  
-
     #real time recognition 
 
     video = cv2.VideoCapture(0)
@@ -54,12 +52,18 @@ def arc_recognition(app):
     print("height", height)
     cv2.namedWindow("Arcface Face Recognition")
     cv2.resizeWindow("Arcface Face Recognition", 800,600)
+    prev_time = time.time()
+    fps =0
     cv2.setWindowProperty("Arcface Face Recognition", cv2.WND_PROP_TOPMOST, 1)
     app.running = True
     while app.running:
         ret, frame = video.read()
         if not ret:
             break
+        curr_time = time.time()
+        fps =1/(curr_time - prev_time)
+        prev_time = curr_time
+        
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, 1.1, 5)
@@ -81,16 +85,23 @@ def arc_recognition(app):
             if best_score < similarity_threshold:
                 best_user = "unknown"
                 result = "access_denied"
-                cv2.rectangle(frame, (x,y), (x+w, y+h), (0,0,255), 2) #red if below threshold
-                cv2.putText(frame, f"{best_user} ({best_score:.2f})", (x, y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
-            else:
-                result = "access_granted"
-                cv2.rectangle(frame, (x,y), (x+w, y+h), (0,255,0), 2) #green if above threshold
-                #green text if above threshold
-                cv2.putText(frame, f"{best_user} ({best_score:.2f})", (x, y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                display_name = "unknown"
+                colour = (0,0,255) #red for unknown
                 
+            else:
+                #get account status for best_user
+                status = get_account_status(best_user)
+                if status == "Revoked":
+                    result = "access_denied"
+                    colour = (0,0,255) #red for revoked
+                    display_name = f"{best_user} (Revoked)"
+                else:
+
+                    result = "access_granted"
+                    display_name = best_user
+                    colour = (0,255,0) #green for known
+
+               
             
             current_time = time.time()
             last_entry = logged_dict.get(best_user, 0)
@@ -101,7 +112,14 @@ def arc_recognition(app):
                 log_attempt(best_user, result, best_score_db, "arcface") #log the attempt to database
                 logged_dict[best_user] = current_time
                 last_user = best_user
+                
+            text = f"{display_name} ({best_score:.2f})"
+            cv2.rectangle(frame, (x,y), (x+w, y+h), colour, 2) #rectangle color based on recognition result
+            cv2.putText(frame, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
+            cv2.putText(frame, result, (x,y+h+25), cv2.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
+        cv2.putText(frame, f"FPS: {fps:.2f}", (10,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
         cv2.imshow("Arcface Face Recognition", frame)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
