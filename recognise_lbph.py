@@ -11,7 +11,9 @@ def lbph_recognition(app):
     last_user= "unknown"
     log_cooldown = 2 #cooldown to prevent spamming logs
     logged_dict = {} #dict to handle logs for multiple users at once
-
+    eval_mode = False #set to true for acquiring results for evaluation, false for normal use
+    session_duration = 60 #duration of eval_mode session
+    session_start = time.time() 
     face_detect = cv.CascadeClassifier(cv.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
     recogniser = cv.face.LBPHFaceRecognizer.create()
@@ -32,6 +34,8 @@ def lbph_recognition(app):
     video = cv.VideoCapture(0)
     app.running = True
     while app.running:
+        if eval_mode and (time.time() - session_start > session_duration):
+            break
         #capture each frame from webcam
         ret, frame = video.read()
         if not ret:
