@@ -31,6 +31,8 @@ def lbph_recognition(app):
         print(f"Database error: {e}")
         label_dict = {}
     #start video capture and recognition loop
+    prev_time = time.time()
+    fps=0
     video = cv.VideoCapture(0)
     app.running = True
     while app.running:
@@ -41,6 +43,9 @@ def lbph_recognition(app):
         if not ret:
             print("failed to grab feed")
             break
+        curr_time = time.time()
+        fps =1/(curr_time - prev_time)
+        prev_time = curr_time
 
         #convert frame to grayscale
         gray=cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -78,7 +83,7 @@ def lbph_recognition(app):
             cv.rectangle(frame, (x,y),(x+w,y+h),colour,2) #rectangle color based on recognition result
            
             cv.putText(frame, text, (x,y-10), cv.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
-       
+            cv.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
             cv.putText(frame, result, (x,y+h+25), cv.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
         #display resulting frame with detected faces
         cv.imshow('Face ', frame)
